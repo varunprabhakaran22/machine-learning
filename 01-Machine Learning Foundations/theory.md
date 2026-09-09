@@ -265,6 +265,64 @@ Reinforcement Learning (RL) is the odd one out — it's not about a fixed datase
 
 ---
 
+## 6. Parametric vs. Non-Parametric Models
+
+This is a **second, independent way to categorize ML algorithms** — separate from Supervised/Unsupervised/Reinforcement (Section 1). Section 1 asks *"what kind of data/feedback does the algorithm learn from?"*. This section asks a completely different question: ***"once trained, how does the model actually store what it learned?"*** Any algorithm from Section 1 (supervised, unsupervised, whatever) can be further labeled as parametric or non-parametric — the two categorizations sit on different axes and can be combined (e.g. Linear Regression is Supervised + Parametric; k-Nearest Neighbors is Supervised + Non-Parametric).
+
+### The real-world story
+
+Imagine two students prepping for the same exam using 1,000 past solved questions.
+
+**Student A (Parametric approach):** studies all 1,000 questions, then **distills** everything into a short cheat-sheet of, say, 10 general formulas/rules. Once the cheat sheet is done, Student A literally **throws away the 1,000 original questions** — doesn't need them anymore. In the actual exam, Student A answers a new question purely using those 10 formulas.
+
+**Student B (Non-Parametric approach):** doesn't distill anything into a fixed cheat sheet. Instead, Student B **keeps all 1,000 solved questions** close by. In the exam, for a new question, Student B literally flips through the past questions, finds the ones **most similar** to this new question, and bases the answer on those closest matches.
+
+Both students can pass the exam — but they work completely differently, and that difference is exactly what "parametric vs. non-parametric" means in ML.
+
+### The actual definitions
+
+| | Parametric | Non-Parametric |
+|---|---|---|
+| **What it does** | Learns a **fixed, small set of numbers (parameters)** from the training data, then discards the training data — predictions use only those learned numbers | Keeps some or **all of the training data around**, and the "model" grows/relies on that data at prediction time — no small fixed formula to distill down to |
+| **Shape assumption** | **Assumes a fixed shape/form** for the pattern upfront (e.g. "I assume price is a straight-line function of square footage") | **Makes little/no assumption** about the shape of the pattern — lets the data itself decide the shape |
+| **Number of parameters** | **Fixed** — stays the same size no matter how much training data you feed it (e.g. always exactly 2 numbers: slope + intercept, whether trained on 100 or 100,000 houses) | **Grows** with the amount of training data (e.g. more stored examples = more comparisons at prediction time) |
+| **Speed at prediction time** | **Fast** — just plug numbers into a small formula | **Slower** — often has to search/compare against stored data each time |
+| **Flexibility** | Less flexible — if the real pattern doesn't actually match the assumed shape, the model will be systematically wrong (this is called "bias" — more on this in a later chapter on model evaluation) | More flexible — can capture unusual/complex patterns the parametric model's fixed shape would miss, since it isn't locked into one assumed shape |
+| **Data needed** | Can work reasonably well with **less data**, because it assumes a shape rather than learning it purely from volume | Usually needs **more data** to work well, since the "knowledge" IS the data (no assumed shortcut shape) |
+
+### Worked example — house prices, both ways
+
+Recall Problem 2 from the practice notebook: predicting house price from square footage.
+
+**Parametric approach (e.g. Linear Regression — Chapter 2):** you assume upfront: *"price probably increases in a straight-line relationship with square footage."* You feed in your 1,000 historical houses, and the algorithm distills that down to exactly 2 numbers: e.g. `price = 500 + 4.2 × sqft` (an intercept of 500 and a slope of 4.2). That's it — 2 numbers, total, is the entire "model." You can throw away the original 1,000 houses; the formula alone predicts any new house's price. **This is exactly what Chapter 2 (Linear Regression) is going to teach you how to build.**
+
+**Non-Parametric approach (e.g. k-Nearest Neighbors):** you make **no** assumption that price follows a straight line at all. Instead, you keep all 1,000 historical houses stored. For a new house, you find the, say, 5 *most similar* past houses (by square footage, bedrooms, location) and average their prices as your prediction. No formula was ever distilled — the "model" is really just the stored data plus a similarity-search rule.
+
+### How to tell which one an algorithm is — the one-question test
+
+Ask: ***"Does the number of things the model needs to remember stay fixed, no matter how much training data I feed it — or does it keep growing as I add more data?"***
+- Stays fixed (a handful of numbers, however much data you throw at it) → **Parametric**.
+- Keeps growing with the data → **Non-Parametric**.
+
+### Common examples of each
+
+| Parametric | Non-Parametric |
+|---|---|
+| Linear Regression | k-Nearest Neighbors (KNN) |
+| Logistic Regression | Decision Trees |
+| Naive Bayes | Random Forests |
+| (Simple) Neural Networks with a fixed architecture | Support Vector Machines (with certain kernels) |
+
+*(These are just names to recognize for now — Linear Regression, the first one, is covered in full in Chapter 2 right after this.)*
+
+### Why this distinction actually matters in practice
+
+- **Parametric models** are your **starting point** for most problems (recall Section 2's "start simple, then get fancy" rule) — fast to train, fast to predict, easy to interpret (you can literally read the formula and explain *why* it predicted something — important when explaining a decision to a non-technical stakeholder, e.g. "why was this loan rejected?").
+- **Non-parametric models** are reached for when you suspect the real-world pattern is **too complex/irregular** for a simple assumed shape to capture well — at the cost of needing more data, being slower at prediction time, and being harder to interpret ("why" becomes "because these 5 similar past examples said so" rather than a clean formula).
+- This is the same "assume a shape vs. let the data speak" tension you'll see again later when checking a statistical distribution's shape (recall the Normal Distribution / skewness discussion in `statistics-self-learning`) — parametric statistics assumes a known distribution shape (like Normal); non-parametric statistics makes no such assumption. Same underlying idea, just applied to ML models instead of statistical tests.
+
+---
+
 ## The full picture, tied together
 
 | Type | Has labels? | Learns to... | Example |
@@ -274,3 +332,5 @@ Reinforcement Learning (RL) is the odd one out — it's not about a fixed datase
 | **Reinforcement** | No (gets rewards instead) | Learn a strategy through trial, error, and delayed feedback | Game-playing AI, robotics, route optimization |
 
 Before writing a single line of modeling code for any real project, the first job is always: **figure out which of these three boxes the problem belongs in** (Section 2's checklist), because that decision alone determines your entire toolkit, evaluation approach, and even what data you need to collect. Everything from here on (later chapters: how each algorithm actually works, evaluation metrics, the full modeling workflow) builds on top of correctly making this call first.
+
+And remember Section 6 sits on a *second, independent* axis: whichever of the three boxes above a problem lands in, the actual algorithm you pick within it is also either **Parametric** (fixed-size formula, faster, simpler, assumes a shape) or **Non-Parametric** (grows with data, more flexible, no assumed shape). Chapter 2, next, is your first full parametric algorithm — Linear Regression.
