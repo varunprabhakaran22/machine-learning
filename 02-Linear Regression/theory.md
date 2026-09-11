@@ -2,145 +2,124 @@
 
 *(Theory + math only in this chapter — no code yet, per Varun's request. Code comes in a follow-up once the concept and math are solid.)*
 
+**Notation note:** you'll see Linear Regression written a few different ways depending on the book/course — school algebra's `y = mx + b`, or ML notation like $\hat{y} = wx + b$ or $\hat{y} = \beta_0 + \beta_1 x$. **They're all the exact same thing.** This chapter sticks to `m` (slope) and `b` (intercept) throughout, since that's the version that actually made sense on first read — just know that if you see $w$ (weight) instead of `m`, or $\beta_0/\beta_1$ instead of `b`/`m`, it's the identical formula wearing different notation.
+
 ## 0. Where this sits in the big picture
 
 Recap from Chapter 1: Linear Regression is your first real algorithm, and it's a perfect one to start with because it's:
 - **Supervised** (Chapter 1, Section 1) — trained on labeled data (features + a known numeric answer).
 - **Regression** (Chapter 1, Section 1) — predicts a **number**, not a category.
-- **Parametric** (Chapter 1, Section 6) — learns a small, *fixed* set of numbers (parameters) from the data, then throws the raw training data away and just uses those numbers to predict.
+- **Parametric** (Chapter 1, Section 5) — learns a small, *fixed* set of numbers (parameters — here, just `m` and `b`) from the data, then throws the raw training data away and just uses those numbers to predict.
 
-Everything below is building toward one very concrete goal: turning "distill 1,000 houses down to 2 numbers" (the parametric idea from Chapter 1) into an actual, precise, step-by-step method.
+Everything below builds toward one concrete goal: turning "distill a pile of houses down to 2 numbers" (the parametric idea from Chapter 1) into an actual, precise, step-by-step method.
 
 ---
 
-## 1. What problem is Linear Regression actually solving?
+## 1. The problem, in plain terms
 
-**The question it answers:** *"Given one or more input variables, what straight-line relationship best predicts a numeric output?"*
+You have some houses. You know their square footage and the price they sold for. You want a model that, given a **new** house's square footage, predicts its price.
 
-### The real-world story
+Training data:
 
-Recall the house price example: square footage → price. If you plot 20 real houses on a graph (x-axis = sqft, y-axis = price), the dots won't form a perfect straight line — real-world data is noisy. But they'll often show a clear **trend**: bigger houses tend to cost more, and that trend looks roughly like a straight line, just with scatter around it.
+| Square Ft (x) | Price in $1000s (y) |
+|---|---|
+| 500 | 150 |
+| 1000 | 200 |
+| 1500 | 250 |
+| 2000 | 300 |
+| 2500 | 350 |
+
+Just eyeballing it: every time square footage goes up by 500, price goes up by 50. That's a **linear relationship** — a straight line.
 
 ```
- price (₹ lakhs)
+ price ($1000s)
    │                                    •
-   │                              •  •
-   │                        •  •
-   │                  •  •
-   │            •  •
-   │      •  •
-   │   •
+   │                              •
+   │                        •
+   │                  •
+   │            •
+   │      •
    └─────────────────────────────────────  sqft
 ```
 
-Linear Regression's job: **find the one straight line that best fits through that scatter of points**, so that for any new square footage, you can read off a predicted price from the line — even for a square footage value you've never actually seen in your data.
-
-### Why a straight line, specifically?
-
-Because it's the simplest possible shape a relationship between two numbers can take (Chapter 1, Section 6's "parametric = assume a shape" idea, made concrete: the assumed shape here is literally *a straight line*). If a straight line describes your data reasonably well, you get a model that's fast, and — crucially — **interpretable**: every part of the line has a plain-English meaning, which we'll unpack next.
+Linear Regression's job: **find the one straight line that best fits through the data**, so that for any new square footage — even one you've never seen — you can read off a predicted price from the line.
 
 ---
 
-## 2. The equation of a line (the formula, unpacked piece by piece)
+## 2. The formula
 
-You've seen this equation in school, possibly written as `y = mx + c`. In ML, it's usually written as:
+You know this from school as `y = mx + b`. That's it — that's the whole formula, and it never changes shape (more on that in Section 6).
 
-$$
-\hat{y} = \beta_0 + \beta_1 x
-$$
-
-This is the **exact same equation**, just relabeled for ML conventions. Here's the translation:
-
-| School notation | ML notation | What it means |
-|---|---|---|
-| `y` (actual) | `y` | The **actual, real, known** value from your training data (e.g. the real price a house sold for) |
-| — | $\hat{y}$ ("y-hat") | The model's **predicted** value — note this is *different* from `y`. The little hat symbol always means "predicted," not "actual." This distinction matters a lot — see Section 3. |
-| `x` | `x` | The **input/feature** (e.g. square footage) |
-| `m` (slope) | $\beta_1$ ("beta-one") | The **slope** — how much $\hat{y}$ changes for every 1-unit increase in `x` |
-| `c` (intercept) | $\beta_0$ ("beta-zero" or "the intercept") | The value of $\hat{y}$ when `x = 0` — where the line crosses the y-axis |
-
-**These two numbers, $\beta_0$ and $\beta_1$, are the entire "model."** This is the parametric idea from Chapter 1 made completely literal: no matter whether you trained on 20 houses or 20,000 houses, the trained model is *always* just these 2 numbers. Once you have them, you throw away the original data — plugging any new `x` into the formula gives you a prediction instantly.
-
-### Worked numeric example
-
-Say training on historical houses produces: $\beta_0 = 20$, $\beta_1 = 4.5$ (price in ₹ lakhs, sqft in hundreds of sqft, just for clean numbers).
-
-$$
-\hat{y} = 20 + 4.5x
-$$
-
-**Reading this in plain English (this is the interpretability payoff mentioned in Chapter 1, Section 6):**
-- $\beta_0 = 20$: a (hypothetical) house with 0 sqft would be predicted at ₹20 lakhs — usually not meaningful on its own, it's just the mathematical anchor point of the line, the baseline the slope builds on top of.
-- $\beta_1 = 4.5$: for every extra 100 sqft, predicted price goes up by ₹4.5 lakhs. **This is the number a business person actually cares about** — "each extra 100 sqft is worth about 4.5 lakhs in this market."
-
-For a house with `x = 15` (1,500 sqft): $\hat{y} = 20 + 4.5 \times 15 = 20 + 67.5 = 87.5$ → predicted price ≈ ₹87.5 lakhs.
-
----
-
-## 3. From one feature to many — Multiple Linear Regression
-
-Real problems rarely have just one input. House price probably depends on square footage **and** bedrooms **and** distance to city center, all at once. The formula extends naturally:
-
-$$
-\hat{y} = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \dots + \beta_n x_n
-$$
-
-| Term | Meaning |
+| Symbol | Meaning |
 |---|---|
-| $x_1, x_2, x_3, \dots$ | Each individual feature (sqft, bedrooms, distance, ...) |
-| $\beta_1, \beta_2, \beta_3, \dots$ | Each feature's own slope — "how much does $\hat{y}$ change per 1-unit change in *this specific* feature, holding all other features constant" |
-| $\beta_0$ | Still the intercept — the baseline value when *every* feature is 0 |
+| `x` | The **input/feature** — square footage |
+| `y` | The **output/target** — what we're predicting, price |
+| `m` | The **slope** — how much price increases per 1-unit increase in square footage |
+| `b` | The **intercept** — the "starting price" when square footage is 0 (a math anchor point — often not literally meaningful in real life, since a 0 sqft house doesn't exist, but the formula needs it to place the line correctly) |
 
-**Why "holding all other features constant" matters:** $\beta_1$ (sqft's slope) tells you sqft's effect *isolated* from bedrooms and distance's effects — each $\beta$ is that feature's own individual pull on the prediction, with the others' influence separated out. This is what makes multiple regression genuinely useful over just eyeballing one variable at a time: it disentangles overlapping effects (e.g. bigger houses often also have more bedrooms — multiple regression can tell you sqft's effect *specifically*, separate from bedroom count's effect).
+### Solving it for our clean data
 
-**Naming:** one feature → **Simple Linear Regression** (Section 2's version). Two or more features → **Multiple Linear Regression** (this section). Same core idea, just more $\beta$'s.
+If you solve for the line that fits the table in Section 1 exactly, you get:
+
+$$
+y = 0.1x + 100
+$$
+
+**Check it:** at `x = 1000` → `y = 0.1(1000) + 100 = 100 + 100 = 200` ✓ — matches the table exactly.
+
+**Reading this in plain English:** for every 1 sq ft increase, price goes up by $0.1k ($100), plus a base of $100k. This is the "distilled formula" idea from Chapter 1's Parametric section, made completely literal — the entire model is just these 2 numbers, `m = 0.1` and `b = 100`. Whether you trained on 5 houses or 5,000, once you have `m` and `b`, you can throw away the original data — the formula alone predicts any new house's price.
 
 ---
 
-## 4. How do you find the "best" line? (the actual learning part)
+## 3. Real data is messy — this is where "learning" actually comes in
 
-Section 2 assumed you're handed $\beta_0$ and $\beta_1$ already. This section is about **how training actually produces those numbers** — this is the real "learning" in Linear Regression.
+The table above was suspiciously perfect (every point lined up exactly). Real data never does. Say your actual data looks like this instead:
 
-### The problem: infinite possible lines
+| Sq Ft (x) | Actual Price (y) |
+|---|---|
+| 500 | 160 |
+| 1000 | 190 |
+| 1500 | 260 |
+| 2000 | 290 |
+| 2500 | 355 |
 
-For any scatter of points, you could draw *infinitely many* straight lines through/near them. Some fit well, some fit terribly. You need a precise, numeric way to say **"this line is better than that line"** — not just eyeballing it.
+Now **no single line passes through every point exactly.** So the question changes from "solve for the line" to: **what's the *best* line — the one closest to all the points overall?**
 
-### Step 1 — Define "error" for a single point: the residual
+### Why can't I just pick any 2 points and compute rise/run?
 
-For any candidate line, and any one training point, compare what the line *predicts* ($\hat{y}$) against what *actually* happened ($y$):
+Good instinct to test, and it reveals exactly why "learning" is needed. Try it with 3 different pairs from the messy table above:
+
+- $(500,160)$ and $(1000,190)$: $m = \dfrac{190-160}{1000-500} = \dfrac{30}{500} = 0.06$
+- $(1500,260)$ and $(2500,355)$: $m = \dfrac{355-260}{2500-1500} = \dfrac{95}{1000} = 0.095$
+- $(500,160)$ and $(2500,355)$: $m = \dfrac{355-160}{2500-500} = \dfrac{195}{2000} = 0.0975$
+
+**Three different pairs → three different slopes (0.06, 0.095, 0.0975).** None of these is "correct" — each is just the local slope between two specific points, ignoring every other point in the dataset. On a perfectly straight line, any 2 points give you the same right answer. The moment data gets messy, that shortcut breaks — you need a method that looks at **every point at once** and finds the slope that's the best overall compromise. That's exactly what Sections 4–5 below build.
+
+---
+
+## 4. Step 1 — Define "how wrong am I": the Cost Function
+
+For any candidate line (any guess at `m` and `b`), and any one house, compare the prediction to reality:
 
 $$
-\text{residual} = y - \hat{y}
+\text{error for one point} = \hat{y} - y
 $$
 
-This is called the **residual** (or error) — how far off the line's prediction was from reality, for that one point. A residual of 0 means a perfect prediction for that point. A large residual (positive or negative) means the line missed badly for that point.
+($\hat{y}$, "y-hat," just means "the value **this line predicts**" — as opposed to `y`, the actual real value. You'll see this hat symbol constantly in ML: no hat = real/actual, hat = predicted.)
 
-### Step 2 — Why not just add up all the residuals?
+**Why not just add up all the errors across every house?** Because positive and negative errors cancel out. A line that's way too high on some houses and way too low on others could sum to ~0 and falsely look "perfect." (Same problem, same fix, as variance in `statistics-self-learning` — squaring removes the sign.)
 
-Tempting first idea: sum the residuals across all points, and pick the line that makes that sum smallest. **This fails**, for a reason you already know from `statistics-self-learning`: positive and negative residuals **cancel each other out**. A line that's wildly wrong (too high on half the points, too low on the other half) could still sum to ~0, falsely looking "perfect." (This is the exact same cancellation problem that variance's calculation solves by squaring deviations — see `statistics-self-learning` Chapter 1, Section 2. Linear Regression borrows the identical fix.)
-
-### Step 3 — Square the residuals, then sum: the Sum of Squared Errors (SSE)
+So instead, **square each error, then average across all houses** — this is the **Mean Squared Error (MSE)**, the standard cost function for Linear Regression:
 
 $$
-\text{SSE} = \sum_{i=1}^{n} (y_i - \hat{y}_i)^2
+\text{MSE} = \frac{1}{n}\sum_{i=1}^{n}(\hat{y}_i - y_i)^2
 $$
 
-Reading this formula piece by piece:
-- $y_i - \hat{y}_i$ → the residual for point $i$ (actual minus predicted)
-- $(\dots)^2$ → square it (removes the sign, punishes big misses harder than small ones — same reasoning as variance)
-- $\sum_{i=1}^{n}$ → sum this across every single training point, from the 1st to the $n$-th
+Reading it piece by piece: $\hat{y}_i - y_i$ is one house's error, $(\dots)^2$ squares it (removes sign, punishes big misses harder), $\sum$ adds that up across all $n$ houses, and $\frac{1}{n}$ averages it. **Bigger MSE = worse line. The entire goal of training is to find the `m` and `b` that make MSE as small as possible.**
 
-**SSE is a single number that scores how bad a candidate line is, across the *entire* dataset at once.** Lower SSE = better-fitting line. A perfect line (impossible in real noisy data, but conceptually) would have SSE = 0.
+### Worked example — comparing two candidate lines by hand
 
-### Step 4 — Ordinary Least Squares (OLS): pick the line that minimizes SSE
-
-**Ordinary Least Squares (OLS)** is simply the *method/rule* for choosing $\beta_0$ and $\beta_1$: **pick whichever values make SSE as small as mathematically possible.** ("Least squares" = literally "smallest sum of squares" — the name directly describes what it does.)
-
-This is why Linear Regression is often described as "fitting a line that minimizes squared error" — that sentence is now fully unpacked: *squared* = Step 3's squaring trick, *error* = Step 1's residual, *minimizes* = Step 4's OLS search for the smallest possible SSE.
-
-### Worked example, small enough to do by hand
-
-4 houses, 1 feature (sqft in hundreds), actual price in ₹ lakhs:
+Using 4 houses (sqft in hundreds, price in ₹ lakhs, just for clean small numbers):
 
 | sqft (x) | actual price (y) |
 |---|---|
@@ -149,67 +128,160 @@ This is why Linear Regression is often described as "fitting a line that minimiz
 | 20 | 105 |
 | 25 | 130 |
 
-Say we're comparing two **candidate lines** (pretend these were proposed, not yet the "trained" answer):
+**Candidate Line A:** `y = 4x + 20`
 
-**Candidate Line A:** $\hat{y} = 20 + 4x$
-
-| x | y (actual) | $\hat{y}$ (predicted) | residual ($y-\hat{y}$) | squared residual |
+| x | y (actual) | $\hat{y}$ (predicted) | error | squared error |
 |---|---|---|---|---|
-| 10 | 65 | 20+40=60 | 5 | 25 |
-| 15 | 88 | 20+60=80 | 8 | 64 |
-| 20 | 105 | 20+80=100 | 5 | 25 |
-| 25 | 130 | 20+100=120 | 10 | 100 |
+| 10 | 65 | 20+40=60 | -5 | 25 |
+| 15 | 88 | 20+60=80 | -8 | 64 |
+| 20 | 105 | 20+80=100 | -5 | 25 |
+| 25 | 130 | 20+100=120 | -10 | 100 |
 
-SSE for Line A = 25+64+25+100 = **214**
+MSE for Line A = (25+64+25+100)/4 = 214/4 = **53.5**
 
-**Candidate Line B:** $\hat{y} = 15 + 4.5x$
+**Candidate Line B:** `y = 4.5x + 15`
 
-| x | y (actual) | $\hat{y}$ (predicted) | residual ($y-\hat{y}$) | squared residual |
+| x | y (actual) | $\hat{y}$ (predicted) | error | squared error |
 |---|---|---|---|---|
-| 10 | 65 | 15+45=60 | 5 | 25 |
-| 15 | 88 | 15+67.5=82.5 | 5.5 | 30.25 |
+| 10 | 65 | 15+45=60 | -5 | 25 |
+| 15 | 88 | 15+67.5=82.5 | -5.5 | 30.25 |
 | 20 | 105 | 15+90=105 | 0 | 0 |
-| 25 | 130 | 15+112.5=127.5 | 2.5 | 6.25 |
+| 25 | 130 | 15+112.5=127.5 | -2.5 | 6.25 |
 
-SSE for Line B = 25+30.25+0+6.25 = **61.5**
+MSE for Line B = (25+30.25+0+6.25)/4 = 61.5/4 = **15.375**
 
-**Line B has a much lower SSE (61.5 vs 214) → Line B fits this data better than Line A.** OLS is the systematic method that searches across *every possible* combination of $\beta_0, \beta_1$ (not just these 2 hand-picked candidates) and mathematically guarantees finding the exact combination with the lowest possible SSE — that guaranteed-best combination is what "training" a Linear Regression model actually produces.
-
-> You won't hand-search candidate lines like this in practice — OLS has a direct mathematical solution (and libraries compute it instantly). This worked example exists purely so "minimizing SSE" stops being an abstract phrase and becomes something you've verified by hand.
+**Line B has a much lower MSE (15.375 vs 53.5) → Line B fits this data better.** This is exactly how "better" gets defined numerically instead of just eyeballed — and it's exactly what training searches over, at scale, across every possible `m`/`b`, not just 2 hand-picked guesses.
 
 ---
 
-## 5. Key assumptions Linear Regression makes
+## 5. Step 2 — Actually finding the best `m` and `b`
 
-Because Linear Regression is **parametric** (Chapter 1, Section 6), it assumes a shape upfront — literally, a straight-line relationship. That assumption only holds up if the real data satisfies a few conditions. Knowing these matters because violating them means your $\beta$'s (and any predictions from them) become unreliable:
+There are two standard methods for finding the `m`/`b` that minimizes MSE. Both are worth knowing, because different tools/algorithms use one or the other.
+
+### Method A — Ordinary Least Squares (OLS): solve it directly
+
+For plain Linear Regression, there's actually a direct formula that calculates the exact best `m` and `b` in one shot — no guessing, no trial and error. This is called **Ordinary Least Squares (OLS)** ("least squares" = literally "smallest sum of squared errors" — the name describes exactly what it finds).
+
+Applying OLS to the messy 5-house data from Section 3:
+
+$$
+m = 0.098, \quad b = 104
+$$
+
+$$
+y = 0.098x + 104
+$$
+
+**Notice:** `m = 0.098` sits almost exactly between the 3 two-point slopes we computed earlier (0.06, 0.095, 0.0975) — closest to the ones computed from points that were *far apart*. That's not a coincidence: points far apart approximate the overall trend better than points close together, but OLS makes this mathematically rigorous by using **every point**, not a guess about which two to trust.
+
+**Check the fit:** MSE with `m=0, b=0` (a flat, useless line) is **67,885**. MSE with the OLS-solved `m=0.098, b=104` drops to just **82**. That collapse from 67,885 → 82 is the entire payoff of solving for the right `m`/`b` instead of guessing.
+
+### Method B — Gradient Descent: find it by iterating
+
+OLS works cleanly for plain Linear Regression, but many other ML algorithms (neural networks, logistic regression, etc.) don't have a one-shot formula like this — they need an iterative search method instead. Linear Regression is the perfect place to learn that method, since you can compare it against OLS's known-correct answer.
+
+**The idea:** imagine standing on a hill (the MSE cost function, plotted against every possible `m`/`b` combination) blindfolded, and you want to walk downhill to the lowest point (smallest MSE). You take small steps in the downhill direction, repeatedly, until you can't go any lower.
+
+$$
+m = m - \alpha \cdot \frac{\partial \text{MSE}}{\partial m}, \qquad b = b - \alpha \cdot \frac{\partial \text{MSE}}{\partial b}
+$$
+
+- The $\frac{\partial \text{MSE}}{\partial m}$ term (the "gradient") tells you which direction increases MSE — so you step in the *opposite* direction to decrease it.
+- $\alpha$ (**alpha**, the **learning rate**) controls how big each step is. Too big → you overshoot and bounce around without settling. Too small → it takes forever to reach the bottom.
+- You repeat this update, thousands of times, each round nudging `m` and `b` a little closer to the values that minimize MSE.
+
+**Worked example — one real step, by hand**, starting from `m=0, b=0` on the messy 5-house data (using a small learning rate $\alpha = 0.0000001$ — the actual value doesn't matter here, just seeing the mechanism work):
+
+1. Start: `m=0, b=0` → MSE = 67,885 (a flat, useless line — predicts price=0 for every house)
+2. Compute the gradient at this point: it tells us MSE decreases if we increase `m` (steeply) and increase `b` (slightly)
+3. Take one step: `m` moves from `0` → `0.0851`, `b` moves from `0` → `0.00005`
+4. Re-check MSE with the new `m, b`: **67,885 → 15,380** — already much better, after just **one** step
+
+Keep repeating this update over and over, and `m`/`b` keep creeping toward OLS's exact answer (`m=0.098, b=104`) — that's "training" a model, literally: repeated small corrections until the error stops shrinking meaningfully.
+
+| | OLS | Gradient Descent |
+|---|---|---|
+| How it finds `m`, `b` | Solves directly with one formula | Iteratively nudges `m`, `b` closer, step by step |
+| Speed | Instant (one calculation) | Takes many iterations |
+| Works when a direct formula doesn't exist? | No — only works for problems with a solvable direct formula | Yes — this is *why* gradient descent matters: most other ML algorithms rely on it |
+| Answer | Exact best `m`, `b` | Approaches the same best `m`, `b`, gets arbitrarily close with enough steps |
+
+---
+
+## 6. Using the trained model
+
+Once training (either method) has produced the final `m` and `b`, prediction is trivial — just plug in a new `x`:
+
+Say training settled on `y = 0.114x + 106`. A new house comes in: 1800 sq ft, price unknown.
+
+$$
+y = 0.114(1800) + 106 = 205.2 + 106 = 311.2
+$$
+
+**Predicted price: $311,200.** That's the entire point of training — find the `m` and `b` that fit the historical data well, then reuse that same formula on new, unseen houses, instantly.
+
+---
+
+## 7. Does the formula ever change? (Multiple features)
+
+Real problems rarely have just one input feature. House price probably depends on square footage **and** bedrooms **and** distance to city center, all at once. The formula extends — but its *shape* stays exactly the same idea:
+
+$$
+y = m_1x_1 + m_2x_2 + m_3x_3 + \dots + b
+$$
+
+Each feature ($x_1$ = sqft, $x_2$ = bedrooms, $x_3$ = distance, ...) gets its **own slope** ($m_1, m_2, m_3, ...$), and there's still just one `b`. This is called **Multiple Linear Regression** (one feature = **Simple Linear Regression**, Sections 1–6 above).
+
+**Why separate slopes per feature matters:** $m_1$ (sqft's slope) tells you sqft's effect on price *in isolation*, holding bedrooms and distance constant. This disentangles overlapping effects — e.g. bigger houses often also have more bedrooms, and Multiple Regression can tell you sqft's effect *specifically*, separate from bedroom count's effect, rather than muddling the two together.
+
+### The big-picture insight: the formula structure never changes — only the numbers do
+
+Whether you're predicting house price from sqft, salary from years of experience, exam scores from hours studied, or crop yield from rainfall + temperature + soil quality — it's **always** `y = mx + b` (or its multi-feature version). What changes per problem:
+- **How many `x`'s (features)** you have.
+- **The actual learned values** of each `m` and `b` — different, because they're learned from different data.
+
+The *method* to find those numbers is also always the same two tools: **MSE** as the cost function, and **OLS or Gradient Descent** to minimize it. You're not inventing new math per problem — you're feeding the same machinery different data, and it hands back different `m`'s and `b`.
+
+### The boundary: this only works if the relationship really is linear
+
+Linear Regression assumes the true relationship between `x` and `y` is roughly a straight line. That assumption holds great for data like the house-price example. But if the real relationship is curved — e.g. house price vs. sqft showing diminishing returns on very large houses, or salary vs. age rising then plateauing — forcing a straight line onto curved data gives you a systematically bad model, no matter how perfectly you solve for `m` and `b`. The formula stays the same; it's just the wrong tool for that data.
+
+That's the boundary where you'd move to **Polynomial Regression** (bends the line into a curve, similar underlying math) or a genuinely different kind of model (decision trees, neural networks) — covered in later chapters.
+
+---
+
+## 8. Key assumptions Linear Regression makes
+
+Because Linear Regression is **parametric** (Chapter 1, Section 5), it assumes a shape upfront — literally, a straight line. That assumption only holds up if the real data roughly satisfies these conditions. Violating them means your `m`/`b` (and predictions from them) become unreliable:
 
 | Assumption | Plain-English meaning | Why it matters |
 |---|---|---|
-| **Linearity** | The real relationship between x and y is actually (roughly) a straight line | If the true pattern is curved (e.g. exponential), a straight line will systematically miss — no amount of "better fitting" fixes a wrong shape |
-| **Independence of errors** | One point's residual shouldn't predict another point's residual | Common violation: time-series data where today's error correlates with yesterday's |
-| **Homoscedasticity** (constant variance of errors) | The "typical size of a miss" should be roughly the same across the whole range of x, not way bigger for large x than small x | If errors fan out (get bigger for bigger houses, say), the model is more trustworthy for some x-ranges than others, and standard error estimates become unreliable |
-| **Normality of errors** | The residuals, plotted as a distribution, should roughly look like a Normal (bell curve) distribution | Ties directly to `statistics-self-learning` Chapter 1's Normal Distribution section — many of Linear Regression's statistical guarantees (like confidence intervals on $\beta$) rely on this |
-| **No severe multicollinearity** (multiple regression only) | Input features shouldn't be near-duplicates of each other (e.g. both `length_cm` and `length_inches` as separate features — recall Chapter 1, Section 6's dimensionality reduction example) | If two features carry almost the same information, OLS can't cleanly tell which one deserves credit for the effect, and the individual $\beta$'s become unstable/hard to trust, even if overall predictions still look fine |
+| **Linearity** | The real relationship is actually (roughly) a straight line | If the true pattern is curved, a straight line systematically misses — no amount of "better fitting" fixes a wrong shape (Section 7's boundary) |
+| **Independence of errors** | One house's error shouldn't predict another's | Common violation: time-series data where today's error correlates with yesterday's |
+| **Homoscedasticity** (constant error spread) | The "typical size of a miss" should be similar across the whole range of x, not way bigger for large x than small x | If errors fan out (bigger for bigger houses), the model is more trustworthy for some x-ranges than others |
+| **Normality of errors** | The errors, plotted as a distribution, should roughly look like a Normal (bell curve) distribution | Ties directly to `statistics-self-learning`'s Normal Distribution section — several of Linear Regression's statistical guarantees rely on this |
+| **No severe multicollinearity** (multiple regression only) | Input features shouldn't be near-duplicates of each other (e.g. `length_cm` and `length_inches` as separate features) | If two features carry almost the same info, the model can't cleanly tell which deserves credit, and individual slopes become unstable/hard to trust |
 
-**How to check these in practice:** mostly done by plotting residuals (residual vs. predicted value, and a histogram of residuals) *after* fitting — this is a "diagnose after the fact" step, same spirit as checking skewness/kurtosis *after* computing them in `statistics-self-learning`, not something you can fully verify just by staring at raw data beforehand.
+**How to check these in practice:** mostly done by plotting the errors (error vs. predicted value, and a histogram of errors) *after* fitting — a "diagnose after the fact" step, same spirit as checking skewness/kurtosis *after* computing them in `statistics-self-learning`.
 
 ---
 
-## 6. Evaluating how good the fit is (beyond just SSE)
+## 9. Evaluating fit quality in human terms
 
-SSE (Section 4) is great for *comparing* candidate lines during training, but it's a bad number to *report* to a human — its scale depends on your data's units and how many points you have (100 points will almost always have a bigger SSE than 10 points, even with an equally good fit). Two more human-readable metrics fix this — full computational detail comes in a later evaluation-metrics chapter, but the concepts belong here since they directly follow from Section 4's math:
+MSE (Section 4) is great for *comparing* candidate lines during training, but it's an awkward number to *report* to a human — its units are squared (e.g. "lakhs²" means nothing intuitively), and its scale depends on how many data points you have. Two more readable metrics fix this (full computational detail in a later evaluation-metrics chapter, but the concepts belong here since they follow directly from this chapter's math):
 
-- **RMSE (Root Mean Squared Error):** $\sqrt{\text{SSE}/n}$ — brings SSE back to the original unit (₹ lakhs, not "lakhs²"), same "undo the squaring" logic as Standard Deviation in `statistics-self-learning`. Reads as: "on average, predictions are off by about X lakhs."
-- **R² (R-squared):** a 0-to-1 score (roughly) answering *"what fraction of the variation in y does this line actually explain?"* R² = 1 → the line perfectly explains all the variation in the data. R² = 0 → the line explains nothing (you'd have done just as well predicting the average `y` for everyone, ignoring x entirely).
+- **RMSE (Root Mean Squared Error):** $\sqrt{\text{MSE}}$ — undoes the squaring, back to the original unit. Same "undo the squaring" logic as Standard Deviation in `statistics-self-learning`. Reads as: "on average, predictions are off by about $X."
+- **R² (R-squared):** a 0-to-1 score answering *"what fraction of the variation in price does this line actually explain?"* R² = 1 → the line perfectly explains all the variation. R² = 0 → the line explains nothing (you'd have done just as well always predicting the average price, ignoring sqft entirely).
 
 ---
 
 ## The full mental model, tied together
 
-1. **Assume a shape** — a straight line, $\hat{y} = \beta_0 + \beta_1 x$ (or the multi-feature version) — this is the parametric assumption from Chapter 1.
-2. **Define "wrong"** — for a candidate line, compute each point's residual ($y - \hat{y}$), square it, sum it all up → SSE.
-3. **Find the best line** — use Ordinary Least Squares (OLS) to pick the exact $\beta_0, \beta_1, \dots$ that minimizes SSE across the whole dataset.
-4. **Sanity-check the assumptions** — linearity, independent/constant-variance/normal errors, no multicollinearity — because the whole method only stays trustworthy if these roughly hold.
-5. **Report fit quality in human terms** — RMSE (typical miss, in real units) and R² (how much of the pattern the line actually explains).
+1. **Assume a shape** — a straight line, `y = mx + b` (or the multi-feature version) — the parametric assumption from Chapter 1.
+2. **Define "wrong"** — for a candidate line, compute each house's error ($\hat{y} - y$), square it, average across all houses → **MSE**.
+3. **Find the best line** — solve directly with **OLS**, or search iteratively with **Gradient Descent** — either way, the goal is the `m`/`b` that minimizes MSE.
+4. **Remember the formula never changes shape** — only the number of features and the learned `m`/`b` values change per problem; the method (MSE + OLS/Gradient Descent) is always the same machinery.
+5. **Sanity-check the assumptions** — linearity, independent/constant-spread/normal errors, no multicollinearity.
+6. **Report fit quality in human terms** — RMSE (typical miss, in real units) and R² (how much of the pattern the line explains).
 
-Once this is solid, the next step (a follow-up chapter/section) is turning this into actual code — fitting a real Linear Regression model on real data using a library, and seeing these exact concepts (residuals, SSE, R²) show up as real numbers you compute, not hand-worked examples.
+Once this is solid, the next step is turning this into actual code — fitting a real Linear Regression model on real data using a library, and watching these exact concepts (errors, MSE, OLS, gradient descent, R²) show up as real numbers you compute, not hand-worked examples.
