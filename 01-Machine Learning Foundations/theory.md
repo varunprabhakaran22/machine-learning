@@ -251,11 +251,23 @@ Both students can pass the exam — but they work completely differently, and th
 
 ### Worked example — house prices, both ways
 
-Recall Problem 2 from the practice notebook: predicting house price from square footage.
+Say you have historical data for houses that have already sold, each with a square footage and the price it actually sold for:
 
-**Parametric approach (e.g. Linear Regression — Chapter 2):** you assume upfront: *"price probably increases in a straight-line relationship with square footage."* You feed in your 1,000 historical houses, and the algorithm distills that down to exactly 2 numbers: e.g. `price = 500 + 4.2 × sqft` (an intercept of 500 and a slope of 4.2). That's it — 2 numbers, total, is the entire "model." You can throw away the original 1,000 houses; the formula alone predicts any new house's price. **This is exactly what Chapter 2 (Linear Regression) is going to teach you how to build.**
+| sqft | price (₹ lakhs) |
+|---|---|
+| 800 | 42 |
+| 1000 | 50 |
+| 1200 | 58 |
+| 1500 | 71 |
+| 1800 | 82 |
 
-**Non-Parametric approach (e.g. k-Nearest Neighbors):** you make **no** assumption that price follows a straight line at all. Instead, you keep all 1,000 historical houses stored. For a new house, you find the, say, 5 *most similar* past houses (by square footage, bedrooms, location) and average their prices as your prediction. No formula was ever distilled — the "model" is really just the stored data plus a similarity-search rule.
+You want to predict the price of a **new house at 1350 sqft** — not one of the 5 above. Here's how a parametric approach and a non-parametric approach would each tackle it:
+
+**Parametric approach (e.g. Linear Regression — Chapter 2):** you assume upfront: *"price probably increases in a straight-line relationship with square footage."* You feed in all 5 historical houses, and the algorithm distills that pattern down to exactly 2 numbers — here, an intercept of ≈9.7 and a slope of ≈0.040, i.e. `price ≈ 9.7 + 0.040 × sqft`. That's it — 2 numbers, total, is the entire "model." You can throw away the original 5 houses; the formula alone now predicts any new house's price: for 1350 sqft → `9.7 + 0.040 × 1350 ≈ 64.2` lakhs. **Exactly how those 2 numbers get calculated from the data — the actual math behind fitting that "best" line — is what Chapter 2 (Linear Regression) teaches next.**
+
+**Non-Parametric approach (e.g. k-Nearest Neighbors):** you make **no** assumption that price follows a straight line at all. Instead, you keep all 5 historical houses stored, as-is. For the new 1350 sqft house, you find the, say, 2 *most similar* stored houses by sqft — here, 1200 sqft (₹58L) and 1500 sqft (₹71L) are the closest matches — and average their prices: `(58 + 71) / 2 = 64.5` lakhs as your prediction. No formula was ever distilled — the "model" is really just the 5 stored houses plus a "find nearest, then average" rule, applied fresh every time a new house comes in.
+
+Notice both landed on almost the same answer here (64.2 vs 64.5 lakhs) — that's expected on simple, clean data like this, where a straight line genuinely is a good fit. The real difference shows up in *how* they got there (a 2-number formula vs. a live lookup-and-average over stored data), and in messier real-world data, where the parametric model's straight-line assumption can start missing a real curved pattern that the non-parametric approach would pick up on naturally.
 
 ### How to tell which one an algorithm is — the one-question test
 
