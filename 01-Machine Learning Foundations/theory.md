@@ -82,10 +82,12 @@ category)      number)     similar     (simplify/
 
 | Sub-type | Predicts | Example |
 |---|---|---|
-| **Classification** | A category/label (discrete) | "Is this email spam or not-spam?", "Will this customer churn: yes/no?", "Is this a cat, dog, or bird?" |
-| **Regression** | A number (continuous) | "What will this house sell for?", "What will tomorrow's temperature be?", "How many units will we sell next month?" |
+| **Classification** | A category/label (categorical — nominal or ordinal) | "Is this email spam or not-spam?", "Will this customer churn: yes/no?", "Is this a cat, dog, or bird?" |
+| **Regression** | A number (numerical — discrete or continuous) | "What will this house sell for?", "What will tomorrow's temperature be?", "How many units will we sell next month?" |
 
 **How to tell which one you need:** ask *"is the answer I'm predicting a category/label, or a number?"* Category → classification. Number → regression. (This connects directly to the "types of data" idea from `statistics-self-learning` — categorical target → classification, numerical target → regression.)
+
+> ⚠️ **Word-collision trap:** don't confuse this "category" with the *statistical* term **discrete** from `statistics-self-learning`. In stats, **discrete** specifically means *countable whole numbers* (e.g. number of orders: 1, 2, 3...) — it's a **numerical** type, arithmetic works on it, and it belongs under Regression, not Classification. A classification target (spam/not-spam, cat/dog/bird) is **categorical** — specifically **Nominal** (no order) or **Ordinal** (has order) — never "discrete" in the stats sense, because you can't average "spam" and "not-spam." So the correct mapping is: **Nominal/Ordinal → Classification**, **Discrete/Continuous → Regression**. If you ever see "discrete" used loosely to describe a classification target elsewhere, it means "a fixed small set of distinct labels" (a plain-English/CS usage) — not the stricter numeric "discrete" from stats. Stick to **categorical** for classification targets to avoid the clash entirely.
 
 **ML/AI relevance:** this is the most common, most mature branch of ML — most real-world business ML (fraud detection, churn prediction, price prediction, medical diagnosis) is supervised learning, because most businesses *do* have historical data with known outcomes (did this transaction turn out to be fraud? yes/no — we found out eventually).
 
