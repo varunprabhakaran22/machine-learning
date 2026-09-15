@@ -17,6 +17,8 @@ Both Chapter 2 and Chapter 3 have a `scripting.ipynb` — real, executed, code e
 
 Needed `scikit-learn`, `matplotlib`, `seaborn` installed via pip (only pandas/numpy were present before). Every cell in both notebooks was actually executed end-to-end (from each chapter folder, since both use a relative `../assets/...` path) to verify it runs and that every markdown commentary number matches real output before being written to the notebook — including the saved `.pkl` model files themselves being real, loadable artifacts, not just described.
 
+Both Chapter 2 and Chapter 3 also have a `recap.md`, answering "how do we know if the model is okay to ship?" — the direct answer to a question Varun asked: it's evaluation (baseline comparison, metric matching the business cost of being wrong, held-out test performance, multiple metrics not just one, sanity-checking coefficients, a pre-agreed bar), **not p-values** — p-values are a stats/hypothesis-testing concept (`statistics-self-learning` Ch3) that most ML algorithms (including sklearn's `LinearRegression`/`LogisticRegression`) don't even produce. Each `recap.md` uses that chapter's own real numbers from its `scripting.ipynb` (Ch2: RMSE 5.65 vs 10.16 baseline; Ch3: accuracy 0.673 vs 0.527 baseline, ROC-AUC 0.745). Each also has a short side-note on single-vs-multiple algorithm comparison (narrow the field by problem/data shape first, then train shortlisted candidates on the same split/metric and compare, always including the simplest as a baseline-for-the-baseline).
+
 ## Working agreement
 
 - Varun is new to ML — explanations should be basic, practical, and grounded in concrete real-world stories/examples, not just definitions or jargon.
